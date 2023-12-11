@@ -1,5 +1,3 @@
-
-
 setwd("/Users/matviimykhailichenko/Documents/GitHub/Networks-in-BC/Scripts")
 
 library(recount3)
@@ -55,5 +53,7 @@ dds <- DESeqDataSetFromMatrix(countData = read_counts,
                               colData = colData(SRP042620_expanded_sample_attributes),
                               design = ~ condition)
 
+# Doing DeSeq function (finding DEGs) on DDS object
+deseq_result <- DESeq(subset_dds)
 
 
