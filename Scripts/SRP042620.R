@@ -1,6 +1,6 @@
 # The dataset has lncRNAs, miRNAs and mRNAs
 
-setwd("/Users/matviimykhailichenko/Documents/GitHub/Networks-in-BC/Scripts")
+setwd("/Users/matviimykhailichenko/Library/CloudStorage/OneDrive-UniwersytetWrocławski/Carrier/Articles/Networks_of_Biomarkers_in_BC/Code/Networks-in-BC")
 
 library(recount3)
 library(DESeq2)
@@ -61,14 +61,11 @@ dds <- DESeqDataSetFromMatrix(countData = read_counts,
 # Doing DeSeq function (finding DEGs) on DDS object
 dds <- DESeq(dds)
 
+#Performing variance stabilizing transformation (vst)
 vsd <- vst(dds)
 
 # Perform PCA
-pca_result <- plotPCA(vsd, intgroup = "condition")
-
-pca_result
-
-# PCAplot is okay 
+PCA_plot <- plotPCA(vsd, intgroup = "condition")
 
 results <- results(dds, contrast = c('condition','cancer','normal'))
 
@@ -78,21 +75,7 @@ log2FC_threshold <- 1 # Adjust according to your desired log2 fold change thresh
 # Filter DEGs
 DEGs <- subset(results, padj < alpha & abs(log2FoldChange) > log2FC_threshold)
 
-#Volcanoplot
 
-results <- as.data.frame(results)
-
-ggplot(results, aes(x = log2FoldChange, y = -log10(padj))) +
-  geom_point(aes(color = ifelse(padj < 0.05, "Significant", "Not Significant")), size = 2) +
-  labs(x = "log2 Fold Change", y = "-log10(Adjusted p-value)") +
-  theme_minimal() +
-  theme(legend.position = "top") +
-  scale_color_manual(values = c("Significant" = "red", "Not Significant" = "gray")) +
-  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "red") +
-  ggtitle("Volcano Plot") +
-  geom_point(aes(color = ifelse(abs(log2FoldChange) > 1, "Significant", "Not Significant")), size = 2) +
-  geom_vline(xintercept = 1, linetype = "dashed", color = "red") +
-  geom_vline(xintercept = -1, linetype = "dashed", color = "red")
 
 
 # Translating genes to proteins using BiomaRt
