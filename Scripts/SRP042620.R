@@ -1,3 +1,5 @@
+# The dataset has lncRNAs, miRNAs and mRNAs
+
 setwd("/Users/matviimykhailichenko/Documents/GitHub/Networks-in-BC/Scripts")
 
 library(recount3)
@@ -20,17 +22,8 @@ SRP042620 <- create_rse(proj_info)
 
 SRP042620_expanded_sample_attributes <- expand_sra_attributes(SRP042620)
 
-# Checking if dataset has miRNA, lncRNA and mRNA
-rowData(SRP042620_expanded_sample_attributes) %>%
-  .$gene_type %>%
-  unique()
-
 # Computing read counts from base-pair counts
 read_counts <- compute_read_counts(SRP042620_expanded_sample_attributes)
-
-colData(SRP042620_expanded_sample_attributes) %>%
-  .$sra_attribute.source_name %>%
-  unique()
 
 # Create a function to determine the condition
 determine_condition <- function(source_name) {
@@ -49,16 +42,21 @@ determine_condition <- function(source_name) {
 # Apply the function to create the new column
 colData(SRP042620_expanded_sample_attributes)$condition <- sapply(colData(SRP042620_expanded_sample_attributes)$`sra_attribute.source_name`, determine_condition)
 
-dds_coldata <- colData(dds)$sra_attribute.tissue %>%
-  data.frame(condition = colData(dds)$condition, tissue = ., run = colData(dds)$sra.run_alias)
+colData <- colData(SRP042620_expanded_sample_attributes) %>% 
+  as.data.frame() %>%
+  .$condition %>%
+  data.frame(condition=.)
 
-dds_coldata %>% 
-  class()
+rownames(colData) <- rownames(colData(SRP042620_expanded_sample_attributes))
+
+
+
+ 
 
 # Making DeSeqDataSet object from matrix
 dds <- DESeqDataSetFromMatrix(countData = read_counts,
-                              colData = dds_coldata,
-                              design = ~ condition + tissue)
+                              colData = colData,
+                              design = ~ condition)
 
 # Doing DeSeq function (finding DEGs) on DDS object
 dds <- DESeq(dds)
@@ -70,24 +68,7 @@ pca_result <- plotPCA(vsd, intgroup = "condition")
 
 pca_result
 
-# Hypothesise that sra.sample_name, sra_attribute.tissue and sra.run_alias could also introduce variance, checking sra_attribute.tissue
-
-
-results <- results(dds)
-
-
-degQC(counts(dds), design[["condition"]], pvalue = res[["pvalue"]])
-
-
-dds_coldata <- colData(dds)$condition
-
-dds_coldata <- colData(dds)$sra_attribute.tissue %>%
-  data.frame(condition = dds_coldata, tissue = ., run = colData(dds)$sra.run_alias)
-
-dds_coldata
-
-colData(dds)$sra.sample_title %>%
-  unique()
+# PCAplot is okay 
 
 results <- results(dds, contrast = c('condition','cancer','normal'))
 
@@ -133,34 +114,47 @@ upregulated_DEGs <- subset(DEGs, log2FoldChange > 0)
 downregulated_DEGs<- subset(DEGs, log2FoldChange < 0)
 
 DEGs_names <- rownames(DEGs)
-rowData(SRP042620) %>%
-  .$gene_type
-
-DEGs_names %>%
-  class()
 
 mapped_DEGs <- rowData(SRP042620)[DEGs_names, ]
 
-mapped_DEGs$gene_type %>%
-  unique()
+# Merge data frames by row names
+merged_df <- merge(mapped_DEGs, DEGs, by = 0)
 
-DEmRNAs <- subset(mapped_DEGs, gene_type == "protein_coding")
+rownames(merged_df) <- rownames(mapped_DEGs)
+
+upregulated_DEmRNAs <- subset(merged_df, gene_type == "protein_coding" & log2FoldChange > 0)
+downregulated_DEmRNAs <- subset(merged_df, gene_type == "protein_coding" & log2FoldChange < 0)
+
+upregulated_DEmiRNAs <- subset(merged_df, gene_type == "miRNA" & log2FoldChange > 0)
+downregulated_DEmiRNAs <- subset(merged_df, gene_type == "miRNA" & log2FoldChange < 0)
+
+upregulated_DElncRNAs <- subset(merged_df, gene_type == c("macro_lncRNA","lincRNA") & log2FoldChange > 0)
+downregulated_DElncRNAs <- subset(merged_df, gene_type == c("macro_lncRNA","lincRNA") & log2FoldChange < 0)
+
+
 
 DEmiRNAs <- subset(mapped_DEGs, gene_type == "miRNA")
 
 DElncRNAs <- subset(mapped_DEGs, gene_type == c("lincRNA","lincRNA"))
 
-# Install and load the "gplots" package (if not already installed)
-install.packages("gplots")
-library(gplots)
 
-DEmRNAs_counts <- counts(dds)[rownames(DEmRNAs), ]
+upregulated_DEmiRNAs_counts <- counts(dds)[rownames(upregulated_DEmiRNAs), ]
 
-# Create the heatmap
-heatmap.2(as.matrix(DEmRNAs_counts), 
-          scale = "row",  # Scale rows (genes)
-          dendrogram = "both",  # Add dendrograms for rows and columns
-          Rowv = TRUE, Colv = TRUE,  # Reorder rows and columns based on clustering
-          col = colorRampPalette(c("blue", "white", "red"))(50),  # Choose a color palette
-          main = "DEmRNAs Heatmap")
+denoised_upregulated_DEmRNAs <- subset(upregulated_DEmRNAs, baseMean>50 & log2FoldChange > 2)
+
+denoised_upregulated_DEmRNAs <- denoised_upregulated_DEmRNAs[order(denoised_upregulated_DEmRNAs$log2FoldChange, decreasing = TRUE),]
+
+mat<-assay(vsd)[rownames(denoised_upregulated_DEmRNAs), rownames(colData(dds))] #sig genes x samples
+
+base_mean <- rowMeans(mat)
+mat.scaled <- t(apply(mat, 1, scale)) #center and scale each column (Z-score) then transpose
+colnames(mat.scaled)<-colnames(mat)
+
+# Keeping 25 most upregulated genes
+
+l2_val <- as.matrix(denoised_upregulated_DEmRNAs[1:25,]$log2FoldChange) #getting log2 value for each gene we are keeping
+colnames(l2_val)<-"logFC"
+
+mean <- as.matrix(denoised_upregulated_DEmRNAs[1:25,]$baseMean) #getting mean value for each gene we are keeping
+colnames(mean)<-"AveExpr"
 
