@@ -131,7 +131,7 @@ downregulated_DEmiRNAs <- subset(merged_df, gene_type == "miRNA" & log2FoldChang
 upregulated_DElncRNAs <- subset(merged_df, gene_type == c("macro_lncRNA","lincRNA") & log2FoldChange > 0)
 downregulated_DElncRNAs <- subset(merged_df, gene_type == c("macro_lncRNA","lincRNA") & log2FoldChange < 0)
 
-
+DEmRNAs <- subset(merged_df, gene_type == "protein_coding")
 
 DEmiRNAs <- subset(mapped_DEGs, gene_type == "miRNA")
 
@@ -140,21 +140,52 @@ DElncRNAs <- subset(mapped_DEGs, gene_type == c("lincRNA","lincRNA"))
 
 upregulated_DEmiRNAs_counts <- counts(dds)[rownames(upregulated_DEmiRNAs), ]
 
-denoised_upregulated_DEmRNAs <- subset(upregulated_DEmRNAs, baseMean>50 & log2FoldChange > 2)
+denoised_DEmRNAs <- subset(DEmRNAs, baseMean>1000 & log2FoldChange > 2)
 
-denoised_upregulated_DEmRNAs <- denoised_upregulated_DEmRNAs[order(denoised_upregulated_DEmRNAs$log2FoldChange, decreasing = TRUE),]
+denoised_DEmRNAs <- denoised_DEmRNAs[order(denoised_DEmRNAs$log2FoldChange, decreasing = TRUE),]
 
-mat<-assay(vsd)[rownames(denoised_upregulated_DEmRNAs), rownames(colData(dds))] #sig genes x samples
+mat<-assay(vsd)[rownames(denoised_DEmRNAs), rownames(colData(dds))] #sig genes x samples
 
 base_mean <- rowMeans(mat)
 mat.scaled <- t(apply(mat, 1, scale)) #center and scale each column (Z-score) then transpose
 colnames(mat.scaled)<-colnames(mat)
 
-# Keeping 25 most upregulated genes
+num_keep <- 25
+#1 to num_keep len-num_keep to len
+rows_keep <- c(seq(1:num_keep), seq((nrow(mat.scaled)-num_keep), nrow(mat.scaled)) )
 
-l2_val <- as.matrix(denoised_upregulated_DEmRNAs[1:25,]$log2FoldChange) #getting log2 value for each gene we are keeping
+l2_val <- as.matrix(denoised_DEmRNAs[rows_keep,]$log2FoldChange) #getting log2 value for each gene we are keeping
 colnames(l2_val)<-"logFC"
 
-mean <- as.matrix(denoised_upregulated_DEmRNAs[1:25,]$baseMean) #getting mean value for each gene we are keeping
+mean <- as.matrix(denoised_DEmRNAs[rows_keep,]$baseMean) #getting mean value for each gene we are keeping
 colnames(mean)<-"AveExpr"
 
+library(ComplexHeatmap)
+library(RColorBrewer)
+library(circlize)
+
+#maps values between b/w/r for min and max l2 values
+col_logFC <- colorRamp2(c(min(l2_val),0, max(l2_val)), c("blue", "white", "red")) 
+
+#maps between 0% quantile, and 75% quantile of mean values --- 0, 25, 50, 75, 100
+col_AveExpr <- colorRamp2(c(quantile(mean)[1], quantile(mean)[4]), c("white", "red"))
+
+ha <- HeatmapAnnotation(summary = anno_summary(gp = gpar(fill = 2), 
+                                               height = unit(2, "cm")))
+
+h1 <- Heatmap(mat.scaled[rows_keep,], cluster_rows = F, 
+              column_labels = colnames(mat.scaled), name="Z-score",
+              cluster_columns = T)
+h2 <- Heatmap(l2_val, row_labels = denoised_DEmRNAs$gene_name[rows_keep], 
+              cluster_rows = F, name="logFC", top_annotation = ha, col = col_logFC,
+              cell_fun = function(j, i, x, y, w, h, col) { # add text to each grid
+                grid.text(round(l2_val[i, j],2), x, y)
+              })
+h3 <- Heatmap(mean, row_labels = denoised_upregulated_DEmRNAs$gene_name[rows_keep], 
+              cluster_rows = F, name = "AveExpr", col=col_AveExpr,
+              cell_fun = function(j, i, x, y, w, h, col) { # add text to each grid
+                grid.text(round(mean[i, j],2), x, y)
+              })
+
+h<-h1+h2+h3
+h
