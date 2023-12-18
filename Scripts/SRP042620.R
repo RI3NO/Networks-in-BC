@@ -76,22 +76,6 @@ log2FC_threshold <- 1 # Adjust according to your desired log2 fold change thresh
 DEGs <- subset(results, padj < alpha & abs(log2FoldChange) > log2FC_threshold)
 
 
-
-
-# Translating genes to proteins using BiomaRt
-ensembl <- useEnsembl(biomart = "genes")
-ensembl <- useDataset(dataset = "hsapiens_gene_ensembl", mart = ensembl)
-protein_DEGs <- getBM(attributes = c("ensembl_peptide_id"),
-                      filters = "ensembl_gene_id_version",
-                      values = rownames(DEGs),
-                      mart = ensembl)
-
-
-# Making Protein-Protein Interation (PPI) network using STRING
-string_db <- STRINGdb$new(version = "11.0", species = 9606, score_threshold=200, input_directory="")
-example1_mapped <- string_db$map(protein_DEGs, "ensembl_peptide_id", removeUnmappedRows = TRUE )
-ppi_data <- string_db$plot_network(example1_mapped)
-
 # Subset upregulated and downregulated DEGs
 upregulated_DEGs <- subset(DEGs, log2FoldChange > 0)
 downregulated_DEGs<- subset(DEGs, log2FoldChange < 0)
@@ -164,7 +148,7 @@ h2 <- Heatmap(l2_val, row_labels = denoised_DEmRNAs$gene_name[rows_keep],
               cell_fun = function(j, i, x, y, w, h, col) { # add text to each grid
                 grid.text(round(l2_val[i, j],2), x, y)
               })
-h3 <- Heatmap(mean, row_labels = denoised_upregulated_DEmRNAs$gene_name[rows_keep], 
+h3 <- Heatmap(mean, row_labels = denoised_DEmRNAs$gene_name[rows_keep], 
               cluster_rows = F, name = "AveExpr", col=col_AveExpr,
               cell_fun = function(j, i, x, y, w, h, col) { # add text to each grid
                 grid.text(round(mean[i, j],2), x, y)
@@ -172,3 +156,6 @@ h3 <- Heatmap(mean, row_labels = denoised_upregulated_DEmRNAs$gene_name[rows_kee
 
 h<-h1+h2+h3
 h
+
+colData(SRP042620_expanded_sample_attributes)$sra_attribute.tissue 
+
