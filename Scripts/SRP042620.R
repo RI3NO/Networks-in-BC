@@ -50,8 +50,10 @@ colData <- colData(SRP042620_expanded_sample_attributes) %>%
 rownames(colData) <- rownames(colData(SRP042620_expanded_sample_attributes))
 
 
+SRP042620_expanded_sample_attributes %>%
+  colData() %>%
+  .$sra_attribute.tissue
 
- 
 
 # Making DeSeqDataSet object from matrix
 dds <- DESeqDataSetFromMatrix(countData = read_counts,
@@ -70,7 +72,7 @@ PCA_plot <- plotPCA(vsd, intgroup = "condition")
 results <- results(dds, contrast = c('condition','cancer','normal'))
 
 alpha <- 0.05 # Adjust according to your significance threshold
-log2FC_threshold <- 1 # Adjust according to your desired log2 fold change threshold
+log2FC_threshold <- 2 # Adjust according to your desired log2 fold change threshold
 
 # Filter DEGs
 DEGs <- subset(results, padj < alpha & abs(log2FoldChange) > log2FC_threshold)
@@ -106,6 +108,8 @@ DElncRNAs <- subset(mapped_DEGs, gene_type == c("lincRNA","lincRNA"))
 
 
 upregulated_DEmiRNAs_counts <- counts(dds)[rownames(upregulated_DEmiRNAs), ]
+upregulated_DEmiRNAs_vst_counts <- assay(vsd)[rownames(upregulated_DEmiRNAs), ]
+
 
 denoised_DEmRNAs <- subset(DEmRNAs, baseMean>1000 & log2FoldChange > 2)
 
