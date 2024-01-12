@@ -1,3 +1,5 @@
+setwd("/Users/matviimykhailichenko/Library/CloudStorage/OneDrive-UniwersytetWrocławski/Carrier/Articles/Networks_of_Biomarkers_in_BC/Code/Networks-in-BC")
+
 library(ComplexHeatmap)
 library(RColorBrewer)
 library(circlize)
@@ -12,7 +14,6 @@ library(org.Hs.eg.db)
 library(DEGreport)
 library(enrichplot)
 library(clusterProfiler)
-setwd("/Users/matviimykhailichenko/Library/CloudStorage/OneDrive-UniwersytetWrocławski/Carrier/Articles/Networks_of_Biomarkers_in_BC/Code/Networks-in-BC")
 source("Scripts/Functions.R")
 
 dataset <- retrieve_dataset("SRP042620")
@@ -292,7 +293,7 @@ string_db <- STRINGdb$new(version = "11.5", species = 9606, score_threshold=200,
 example1_mapped <- string_db$map(protein_DEGs, "ensembl_peptide_id", removeUnmappedRows = TRUE )
 ppi_data <- string_db$plot_network(example1_mapped$STRING_id[1:2000])
 
-protein_DEGs$ensembl_peptide_id
+rownames(DEGs_ER_pos)
 
 
 
