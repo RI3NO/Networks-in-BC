@@ -136,8 +136,7 @@ PCA_plot_TNBC
 
 dds_TNBC <- DESeq(dds_TNBC)
 results_TNBC <- results(dds_TNBC, contrast = c('condition','cancer','normal'))
-DEGs_TNBC <- subset(results_TNBC, padj < 0.05 & abs(log2FoldChange) > 2 & baseMean > 1000)
-DEGs_TNBC
+DEGs_TNBC <- subset(results_TNBC, padj < 0.05)
 
 
 # Print the row containing "MALAT1"
