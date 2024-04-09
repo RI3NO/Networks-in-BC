@@ -19,7 +19,8 @@ library(magrittr)
 source("Scripts/Functions.R")
 
 dds_SRP042620 <- retrieve_dds("SRP042620")
-
+rowData(dds_SRP042620)$gene_type %>%
+  unique()
 # Create a vector of tissue types you want to keep
 # tissue_types_to_keep <- c("ER+ Breast Cancer Primary Tumor", "Uninvolved Breast Tissue Adjacent to ER+ Primary Tumor")
 
@@ -377,20 +378,5 @@ print(list("Correlation between Cluster 1 and 2" = correlation_1_2,
 
 # Example of testing the significance of the correlation between Cluster 1 and 2
 test_result <- cor.test(cluster3_lf, cluster4_lf, method = "pearson")
-print(test_result)
 
-                       
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+pmcplot(query, period, proportion = TRUE)
