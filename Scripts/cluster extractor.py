@@ -2,7 +2,7 @@ clusters = []
 count = 0
 
 # Open Clusters.txt for reading
-with open('Clusters.txt', 'r') as file:
+with open('../Files/Clusters.txt', 'r') as file:
     # Iterate through each line to find the first line that contains information about cluster
     for line in file:
         if "Cluster	Score" in line:
@@ -25,7 +25,7 @@ with open('Clusters.txt', 'r') as file:
         ids_str = '\n'.join(ids)
 
         # Write the IDs to the file
-        with open(f"clusters\cluster{count}.txt", "w") as file_to_write:
+        with open(f"../Files/clusters/cluster{count}.txt", "w") as file_to_write:
             file_to_write.write(ids_str)
 
 
