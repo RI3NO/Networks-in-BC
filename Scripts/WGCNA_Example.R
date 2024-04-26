@@ -1,5 +1,6 @@
 # Dataset is SRP042620
 
+
 library(recount3)
 library(DESeq2)
 library(tidyverse)
@@ -12,14 +13,20 @@ library(CorLevelPlot)
 library(gridExtra)
 library(WGCNA)
 
-source("Functions.R")
 getwd()
 
 setwd(file.path(getwd(),"Scripts"))
 
+source("Functions.R")
+getwd()
+
+
 # Retrieving Dataset "SRP042620" using recount 3 with designed condition (normal, cancer) in form of DeSeq2 object
 dds_SRP042620 <- retrieve_dds("SRP042620")
 View(dds_SRP042620)
+#dds_SRP042620@colData
+#colData(dds_SRP042620)
+
 # Subsetting it to 20 sample because it's computationally heavy to take more(even 20), but 20 is enough for nice WGCNA
 #subset_dds <- dds_SRP042620[,1:20]
 
@@ -56,6 +63,9 @@ pca.var <- pca$sdev^2
 pca.var.percent <- round(pca.var/sum(pca.var)*100, digits = 2)
 
 pca.dat <- as.data.frame(pca.dat)
+    
+# remove.packages("gtable")
+# install.packages("gtable")
 
 ggplot(pca.dat, aes(PC1, PC2)) +
   geom_point() +
@@ -338,7 +348,7 @@ mME %>% ggplot(., aes(x=treatment, y=name, fill=value)) +
 module.membership.measure <- cor(module_eigengenes, input_mat, use = 'p')
 nSamples <- nrow(input_mat)
 nGenes <- ncol(input_mat)
-module.membership.measure.pvals <- corPvalueStudent(module.membership.measure, nSamples)
+module.membership.measure.pvals <- corPvalueStudent(module.membership.measure, nSamples) # Calculates Student asymptotic p-value for given correlations.
 
 View(module.membership.measure.pvals)
 # Using the module membership measures you can identify genes with high module membership in interesting modules.
@@ -396,12 +406,11 @@ submod_df %>% ggplot(., aes(x=name, y=value, group=gene_id)) +
 
 
 ### GSEA with clusterprofiler
-
 library(clusterProfiler)
 
 # Pull out list of genes in that module
 submod = module_df %>%
-  subset(colors == "turquoise")
+  subset(colors == "blue")
 
 row.names(module_df) = module_df$gene_id
 
@@ -431,13 +440,24 @@ df_1_4_7_8
 
 
 
-rankings_gseGO <- df_1_4_7_8$log2FoldChange
-names(rankings_gseGO) <- df_1_4_7_8$Symbol
-rankings_gseGO <- na.omit(rankings_gseGO)
-rankings_gseGO = sort(rankings_gseGO, decreasing = TRUE)
-rankings_gseGO
+rankings <- sign(df_1_4_7_8$log2FoldChange)*(-log10(df_1_4_7_8$pvalue)) # we will use the signed p values from spatial DGE as ranking
+names(rankings) <- df_1_4_7_8$Symbol # genes as names
+rankings
+#View(rankings)
+rankings <- sort(rankings, decreasing = TRUE) # sort genes by ranking
+head(rankings)
+
+plot(rankings)
+
+
+
+#rankings_gseGO <- df_1_4_7_8$log2FoldChange
+#names(rankings_gseGO) <- df_1_4_7_8$Symbol
+#rankings_gseGO <- na.omit(rankings_gseGO)
+#rankings_gseGO = sort(rankings_gseGO, decreasing = TRUE)
+#rankings_gseGO
 organism <- "org.Hs.eg.db"
-gse <- gseGO(geneList = rankings_gseGO, 
+gse <- gseGO(geneList = rankings, 
              ont ="ALL", 
              keyType = "SYMBOL", 
              nPerm = 10000, 
@@ -449,33 +469,66 @@ gse <- gseGO(geneList = rankings_gseGO,
              pAdjustMethod = "none")
 
 View(gse)
+View(gse@result)
+
+getwd()
+gse_result <- arrange(gse@result, p.adjust, NES)
+gse_result
+library(xlsx)
+write.xlsx(gse_result, file.path("C:/Users/RTIntelektFBT/Desktop/Roman_Project/Networks-in-BC/Networks-in-BC/Files/WGCNA_GSEA_Blue_Module.xlsx"))
 # gse_pairwise <- pairwise_termsim(enrichment_TNBC)
 require(DOSE)
 library(enrichplot)
 enriched_terms <- pairwise_termsim(gse)
 
+plot_path <-"C:/Users/RTIntelektFBT/Desktop/Roman_Project/Networks-in-BC/Networks-in-BC/Plots"
+
+
 #Showing 10 categories as more is unreadable
-dotplot(gse, showCategory=10, split=".sign") + facet_grid(.~.sign)
+Dotlot <- dotplot(gse, showCategory=10, split=".sign") + facet_grid(.~.sign)
+Dotlot
+ggsave(file = file.path(plot_path,"WGCNA_GSEA_Turq_Module_Dotlot.svg"), plot = Dotlot, width=10, height=8)
+dev.off()
+
 #Showing 30 categories as it looks good
-emapplot(enriched_terms, showCategory = 30)
+Emapplot <- emapplot(enriched_terms, showCategory = 20)
+Emapplot
+ggsave(file = file.path(plot_path,"WGCNA_GSEA_Turq_Module_Emapplot.svg"), plot = Emapplot, width=10, height=8)
+
+
 # categorySize can be either 'pvalue' or 'geneNum'. Nice thing, but should be polished
 # as it looks ugly now
-cnetplot(gse, categorySize="pvalue", foldChange=rankings_gseGO, showCategory=30, 
+Cnetplot <- cnetplot(gse, categorySize="pvalue", foldChange=rankings, showCategory = 20, 
          cex_label_gene=0, cex_label_category=0.5, cex_category=0.5,
          cex_gene=0.5, layout = "kk")
+Cnetplot
+ggsave(file = file.path(plot_path,"WGCNA_GSEA_Turq_Module_Cnetplot.svg"), plot = Emapplot, width=10, height=8)
 
 # No clue what it shows or could it be useful. The distribution is quite simialr
-ridgeplot(gse, core_enrichment = TRUE, label_format=40, orderBy = "NES",
+# A Ridgeplot can be used to visualize these enrichment scores across multiple gene sets 
+# and conditions simultaneously. Each ridge in the plot represents a gene set, and the width 
+# and height of the ridge represent the density of enrichment scores for that gene set across 
+# different conditions. This visualization allows for the comparison of enrichment patterns across 
+# conditions and helps identify which gene sets are consistently enriched or depleted across 
+# experimental groups.
+
+Ridgeplot <- ridgeplot(gse, core_enrichment = TRUE, label_format=40, orderBy = "NES",
           decreasing = TRUE, showCategory = 10) + labs(x = "enrichment distribution")
+Ridgeplot
+ggsave(file = file.path(plot_path,"WGCNA_GSEA_Turq_Module_Ridgeplot.svg"), plot = Ridgeplot, width=10, height=8)
 
 # Use the `Gene Set` param for the index in the title, and as the value for geneSetId
-gseaplot(gse, by = "all", title = gse$Description[1], geneSetID = 1)
+Gseaplot <- gseaplot(gse, by = "all", title = gse$Description[1], geneSetID = 1)
+Gseaplot
+ggsave(file = file.path(plot_path,"WGCNA_GSEA_Turq_Module_Gseaplot.svg"), plot = Gseaplot, width=10, height=8)
+
 
 terms <- gse$Description[1:20]
 terms_with_TNBC <- paste0(terms, " TNBC")
 # Nice graph, maybe will show what terms are interesting 
-pmcplot(terms_with_TNBC, 2010:2023, proportion=TRUE)
-
+Pmcplot <- pmcplot(terms_with_TNBC, 2010:2023, proportion=TRUE)
+Pmcplot
+ggsave(file = file.path(plot_path,"WGCNA_GSEA_Turq_Module_Pmcplot.svg"), plot = Pmcplot, width=10, height=8)
 
 
 
@@ -707,4 +760,8 @@ plotGseaTable(
   axisLabelStyle = NULL,
   render = NULL
 )
+
+
+
+
 
