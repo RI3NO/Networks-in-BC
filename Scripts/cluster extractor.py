@@ -18,7 +18,7 @@ with open('../Files/Clusters.txt', 'r') as file:
 
         # Iterate through each part in the line to get IDs
         for part in parts:
-            if part.startswith('9606'):
+            if '9606' in part:
                 ids.append(part.split('.')[1])
 
         # Format the IDs before writing them to the output file
@@ -27,5 +27,4 @@ with open('../Files/Clusters.txt', 'r') as file:
         # Write the IDs to the file
         with open(f"../Files/clusters/cluster{count}.txt", "w") as file_to_write:
             file_to_write.write(ids_str)
-
 
