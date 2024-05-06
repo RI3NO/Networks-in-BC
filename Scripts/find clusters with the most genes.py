@@ -3,6 +3,7 @@ import os
 folder_path = '../Files/clusters'
 file_gene_counts = {}
 
+# Open each cluster
 for filename in os.listdir(folder_path):
     with open(os.path.join(folder_path, filename), 'r') as file:
         line_count = sum(1 for line in file)
