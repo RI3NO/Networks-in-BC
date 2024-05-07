@@ -1,5 +1,6 @@
 # Change to directory where you cloned the repository
 setwd("/Users/matviimykhailichenko/Library/CloudStorage/OneDrive-UniwersytetWrocławski/Carrier/Articles/Networks_of_Biomarkers_in_BC/Code/Networks-in-BC")
+getwd()
 
 library(ComplexHeatmap)
 library(RColorBrewer)

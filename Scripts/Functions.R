@@ -1,6 +1,6 @@
 retrieve_dds <- function(project_id) {
   # Set working directory (consider passing this as an argument or setting it outside the function)
-  setwd("/Users/matviimykhailichenko/Library/CloudStorage/OneDrive-UniwersytetWrocławski/Carrier/Articles/Networks_of_Biomarkers_in_BC/Code/Networks-in-BC")
+  # setwd("/Users/matviimykhailichenko/Library/CloudStorage/OneDrive-UniwersytetWrocławski/Carrier/Articles/Networks_of_Biomarkers_in_BC/Code/Networks-in-BC")
   
   # Loading dataset from recount3
   human_projects <- available_projects()
@@ -72,7 +72,7 @@ generate_heatmap <- function(DEGs_counts, dds) {
 }
 
 perform_enrichment_analysis <- function(ontology_types, DEGs_TNBC) {
-  setwd("/Users/matviimykhailichenko/Library/CloudStorage/OneDrive-UniwersytetWrocławski/Carrier/Articles/Networks_of_Biomarkers_in_BC/Code/Networks-in-BC/Plots/Enrichment_Analysis")
+  # setwd("/Users/matviimykhailichenko/Library/CloudStorage/OneDrive-UniwersytetWrocławski/Carrier/Articles/Networks_of_Biomarkers_in_BC/Code/Networks-in-BC/Plots/Enrichment_Analysis")
   version <- 1
   while (file.exists(paste("v", version, sep = ""))) {
     version <- version + 1  # Increment version if file already exists
@@ -118,6 +118,6 @@ perform_enrichment_analysis <- function(ontology_types, DEGs_TNBC) {
       dev.off()
     }
   }
-  setwd("/Users/matviimykhailichenko/Library/CloudStorage/OneDrive-UniwersytetWrocławski/Carrier/Articles/Networks_of_Biomarkers_in_BC/Code/Networks-in-BC")
+  # setwd("/Users/matviimykhailichenko/Library/CloudStorage/OneDrive-UniwersytetWrocławski/Carrier/Articles/Networks_of_Biomarkers_in_BC/Code/Networks-in-BC")
 }
 

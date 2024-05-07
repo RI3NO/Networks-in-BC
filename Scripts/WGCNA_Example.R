@@ -12,8 +12,11 @@ BiocManager::install("CorLevelPlot")
 library(CorLevelPlot)
 library(gridExtra)
 library(WGCNA)
+library(recount3)
+library(DESeq2)
 
 getwd()
+
 
 setwd(file.path(getwd(),"Scripts"))
 
