@@ -1,4 +1,5 @@
 # Dataset is SRP042620
+BiocManager::install("recount3")
 
 
 library(recount3)
@@ -12,8 +13,7 @@ BiocManager::install("CorLevelPlot")
 library(CorLevelPlot)
 library(gridExtra)
 library(WGCNA)
-library(recount3)
-library(DESeq2)
+library(ggplot2)
 
 getwd()
 
@@ -22,6 +22,10 @@ setwd(file.path(getwd(),"Scripts"))
 
 source("Functions.R")
 getwd()
+file_path <-  file.path("C:/Users/RTIntelektFBT/Desktop/Roman_Project/Networks-in-BC/Networks-in-BC","Files")
+new_dir <- file.path(file_path,"WGCNA_results") # 
+dir.create(new_dir)
+
 
 
 # Retrieving Dataset "SRP042620" using recount 3 with designed condition (normal, cancer) in form of DeSeq2 object
@@ -51,12 +55,16 @@ table(gsg$goodSamples)
 # Exclude Outliers 
 dds_SRP042620 <- dds_SRP042620[gsg$goodGenes == TRUE,]
 #dds_SRP042620
+
 # Detect outliers samples
 htree <- hclust(dist(t(assay(dds_SRP042620)), method = "manhattan"))
-
+# Adjust the margins
+# par(mar = c(4, 4, 2, 2))  # Adjust the values as needed (bottom, left, top, right)
+# par(mfrow=c(1.3,1.3))
+dev.off()
 plot(htree)
 
-
+ggsave(file = file.path(new_dir,"dendrogram_plot.png"), width = 12, height = 8)
 
 # pca - method 2
 pca <- prcomp(t(assay(dds_SRP042620)))
@@ -70,11 +78,15 @@ pca.dat <- as.data.frame(pca.dat)
 # remove.packages("gtable")
 # install.packages("gtable")
 
-ggplot(pca.dat, aes(PC1, PC2)) +
+pca.plot <- ggplot(pca.dat, aes(PC1, PC2)) +
   geom_point() +
   geom_text(label = rownames(pca.dat)) +
   labs(x = paste0('PC1: ', pca.var.percent[1], ' %'),
        y = paste0('PC2: ', pca.var.percent[2], ' %'))
+
+ggsave(file = file.path(new_dir,"PCA_plot.svg"), plot = pca.plot, 
+       width = 12, height = 8)
+
 
 
 ### NOTE: If there are batch effects observed, correct for them before moving ahead
@@ -136,7 +148,8 @@ expr_normalized_df <- data.frame(expr_normalized) %>%
 
 expr_normalized_df
 names50samples
-expr_normalized_df[expr_normalized_df$name %in% names50samples,] %>% ggplot(., aes(x = name, y = value)) +
+
+quantile_expression_plot <- expr_normalized_df[expr_normalized_df$name %in% names50samples,] %>% ggplot(., aes(x = name, y = value)) +
   geom_violin() +
   geom_point() +
   theme_bw() +
@@ -149,6 +162,11 @@ expr_normalized_df[expr_normalized_df$name %in% names50samples,] %>% ggplot(., a
     x = "treatment",
     y = "normalized expression"
   )
+quantile_expression_plot
+ggsave(file = file.path(new_dir,"quantile_expression_plot.svg"), plot = quantile_expression_plot, 
+       width = 12, height = 8)
+
+
 
 # Preparing and transposing out expr matrix for WGCNA
 input_mat = t(expr_normalized)
@@ -158,7 +176,7 @@ nrow(input_mat)
 ncol(input_mat)
 
 ######  WGCNA !!!
-#library(WGCNA)
+library(WGCNA)
 allowWGCNAThreads()          # allow multi-threading (optional)
 # Choose a set of soft-thresholding powers
 powers = c(c(1:10), seq(from = 12, to = 20, by = 2))
@@ -215,7 +233,12 @@ a2 <- ggplot(sft.data, aes(Power, mean.k., label = Power)) +
   labs(x = 'Power', y = 'Mean Connectivity') +
   theme_classic()
 
-grid.arrange(a1, a2, nrow = 2)
+plot_picking_power <- grid.arrange(a1, a2, nrow = 2)
+plot_picking_power
+ggsave(file = file.path(new_dir,"plot_picking_power_plot.svg"), plot = plot_picking_power, 
+       width = 12, height = 8)
+
+
 
 # picked_power is optional depending on plots 
 picked_power = 14
@@ -263,15 +286,17 @@ head(module_eigengenes)
 table(netwk$colors)
 
 # Plot the dendrogram and the module colors before and after merging underneath
-plotDendroAndColors(netwk$dendrograms[[1]], cbind(netwk$unmergedColors, netwk$colors),
+Dendrogram_unmerged_modules <- plotDendroAndColors(netwk$dendrograms[[1]], cbind(netwk$unmergedColors, netwk$colors),
                     c("unmerged", "merged"),
                     dendroLabels = FALSE,
                     addGuide = TRUE,
                     hang= 0.03,
                     guideHang = 0.05)
-
 # grey module = all genes that doesn't fall into other modules were assigned to the grey module
+Dendrogram_unmerged_modules
 
+plot(Dendrogram_unmerged)
+ggsave(file = file.path(new_dir,"Dendrogram_unmerged_modules_plot.png"), width = 10, height = 8)
 
 
 
@@ -280,7 +305,7 @@ mergedColors = labels2colors(netwk$colors)
 
 # Plot the dendrogram and the module colors underneath
 # Plot for merged modules
-plotDendroAndColors(
+Dendrogram_merged_modules <- plotDendroAndColors(
   netwk$dendrograms[[1]],
   mergedColors[netwk$blockGenes[[1]]],
   "Module colors",
@@ -288,6 +313,8 @@ plotDendroAndColors(
   hang = 0.03,
   addGuide = TRUE,
   guideHang = 0.05 )
+
+Dendrogram_merged_modules
 
 #netwk$colors[netwk$blockGenes[[1]]]
 #table(netwk$colors)
@@ -306,7 +333,7 @@ table(module_df$colors)
 
 
 write_delim(module_df,
-            file = "gene_modules.txt",
+            file = file.path(new_dir,"gene_modules.txt"),
             delim = "\t")
 
 # Get Module Eigengenes per cluster
@@ -329,17 +356,18 @@ mME = MEs0 %>%
     name = factor(name, levels = module_order)
   )
 
-mME %>% ggplot(., aes(x=treatment, y=name, fill=value)) +
-  geom_tile() +
-  theme_bw() +
-  scale_fill_gradient2(
-    low = "blue",
-    high = "red",
-    mid = "white",
-    midpoint = 0,
-    limit = c(-1,1)) +
-  theme(axis.text.x = element_text(angle=90)) +
-  labs(title = "Module-trait Relationships", y = "Modules", fill="corr")
+Module.trait_relationships <- mME %>% ggplot(., aes(x=treatment, y=name, fill=value)) +
+        geom_tile() +
+        theme_bw() +
+        scale_fill_gradient2(
+            low = "blue",
+            high = "red",
+            mid = "white",
+            midpoint = 0,
+            limit = c(-1,1)) +
+        theme(axis.text.x = element_text(angle=90)) +
+        labs(title = "Module-trait Relationships", y = "Modules", fill="corr")
+ggsave(file = file.path(new_dir,"Module.trait_relationships.svg"), plot = Module.trait_relationships, width = 12, height=8)
 
 
 
@@ -351,25 +379,51 @@ mME %>% ggplot(., aes(x=treatment, y=name, fill=value)) +
 module.membership.measure <- cor(module_eigengenes, input_mat, use = 'p')
 nSamples <- nrow(input_mat)
 nGenes <- ncol(input_mat)
+library("xlsx")
+library("readxl")
 module.membership.measure.pvals <- corPvalueStudent(module.membership.measure, nSamples) # Calculates Student asymptotic p-value for given correlations.
+write.xlsx(module.membership.measure.pvals, file.path(new_dir,"module.membership.measure.pvals.xlsx"))
 
 View(module.membership.measure.pvals)
 # Using the module membership measures you can identify genes with high module membership in interesting modules.
 
+
 ncol(input_mat)
 length(netwk$colors)
+# Find top hub genes by chooseTopHubInEachModule. Here I used the same power as for adjacency network
 top.hub_genes <- chooseTopHubInEachModule(
       datExpr = input_mat,     # Gene expression data with rows as samples and columns as genes
       colorh = netwk$colors,   # The module assignments (color vectors) corresponding to the rows in datExpr
       omitColors = "grey",
-      power = 2,
+      power = 14,
       type = "signed", 
       )
+
 top.hub_genes
-  
+
+sort(table(module_df$colors))
+sort(table(netwk$colors))
+
+color_module <- names(sort(table(module_df$colors)))
+color_module
+gene_count <- as.vector(unname(sort(table(module_df$colors))))
+gene_count
+number_module <- names(sort(table(netwk$colors)))
+number_module
+info_modules <- data.frame(color_module = color_module, 
+                number_module = number_module,
+                gene_count = gene_count)
+info_modules
+# str(top.hub_genes)
+
+info_modules <- merge(info_modules, as.data.frame(top.hub_genes), 
+                   by.x = "number_module", by.y = "row.names", all.x = TRUE)
+
+info_modules
+write.xlsx(info_modules, file.path(new_dir,"info_modules.xlsx"))
 
 
-
+# Examine Expression Profiles
 # pick out a few modules of interest here
 # OPTIONAL< DEPENDING ON OUR RESULTS !!!!
 modules_of_interest = c("turquoise", "blue")
@@ -395,7 +449,8 @@ submod_df = data.frame(subexpr) %>%
     module = module_df[gene_id,]$colors
   )
 
-submod_df %>% ggplot(., aes(x=name, y=value, group=gene_id)) +
+expression_profile_TOP2_module <- submod_df %>% 
+    ggplot(., aes(x=name, y=value, group=gene_id)) +
   geom_line(aes(color = module),
             alpha = 0.2) +
   theme_bw() +
@@ -405,7 +460,8 @@ submod_df %>% ggplot(., aes(x=name, y=value, group=gene_id)) +
   facet_grid(rows = vars(module)) +
   labs(x = "treatment",
        y = "normalized expression")
-
+expression_profile_TOP2_module
+ggsave(file = file.path(new_dir,"expression_profile_TOP2_module.svg"), plot = expression_profile_TOP2_module, width = 12, height=8)
 
 
 ### GSEA with clusterprofiler
@@ -413,7 +469,7 @@ library(clusterProfiler)
 
 # Pull out list of genes in that module
 submod = module_df %>%
-  subset(colors == "blue")
+  subset(colors == "turquoise") # blue also
 
 row.names(module_df) = module_df$gene_id
 
@@ -441,9 +497,8 @@ df_1_4_7_8 <- df_2_5_6[,c(4,1,2,3)]
 rownames(df_1_4_7_8) <- NULL
 df_1_4_7_8
 
-
-
-rankings <- sign(df_1_4_7_8$log2FoldChange)*(-log10(df_1_4_7_8$pvalue)) # we will use the signed p values from spatial DGE as ranking
+plot(sort(df_1_4_7_8$log2FoldChange))
+rankings <- df_1_4_7_8$log2FoldChange #*(-log10(df_1_4_7_8$pvalue)) # we will use the signed p values from spatial DGE as ranking
 names(rankings) <- df_1_4_7_8$Symbol # genes as names
 rankings
 #View(rankings)
@@ -464,7 +519,7 @@ gse <- gseGO(geneList = rankings,
              ont ="ALL", 
              keyType = "SYMBOL", 
              nPerm = 10000, 
-             minGSSize = 3, 
+             minGSSize = 20, 
              maxGSSize = 800, 
              pvalueCutoff = 0.05, 
              verbose = TRUE, 
@@ -475,37 +530,45 @@ View(gse)
 View(gse@result)
 
 getwd()
-gse_result <- arrange(gse@result, p.adjust, NES)
+gse_result <- arrange(gse@result, desc(NES), p.adjust)
 gse_result
+gse <- arrange(gse,desc(NES), p.adjust) # Ascending order
+
 library(xlsx)
-write.xlsx(gse_result, file.path("C:/Users/RTIntelektFBT/Desktop/Roman_Project/Networks-in-BC/Networks-in-BC/Files/WGCNA_GSEA_Blue_Module.xlsx"))
+new_dir
+write.xlsx(gse_result, file.path(new_dir,"WGCNA_GSEA_Turq_Module.xlsx"))
 # gse_pairwise <- pairwise_termsim(enrichment_TNBC)
 require(DOSE)
 library(enrichplot)
 enriched_terms <- pairwise_termsim(gse)
 
-plot_path <-"C:/Users/RTIntelektFBT/Desktop/Roman_Project/Networks-in-BC/Networks-in-BC/Plots"
+# plot_path <-"C:/Users/RTIntelektFBT/Desktop/Roman_Project/Networks-in-BC/Networks-in-BC/Plots"
 
 
 #Showing 10 categories as more is unreadable
 Dotlot <- dotplot(gse, showCategory=10, split=".sign") + facet_grid(.~.sign)
 Dotlot
-ggsave(file = file.path(plot_path,"WGCNA_GSEA_Turq_Module_Dotlot.svg"), plot = Dotlot, width=10, height=8)
-dev.off()
+ggsave(file = file.path(new_dir,"WGCNA_GSEA_Blue_Module_Dotlot.svg"), plot = Dotlot, width = 12, height=8)
 
 #Showing 30 categories as it looks good
 Emapplot <- emapplot(enriched_terms, showCategory = 20)
-Emapplot
-ggsave(file = file.path(plot_path,"WGCNA_GSEA_Turq_Module_Emapplot.svg"), plot = Emapplot, width=10, height=8)
+Emapplot 
+ggsave(file = file.path(new_dir,"WGCNA_GSEA_Blue_Module_Emapplot.svg"), plot = Emapplot, width = 12, height=8)
 
 
 # categorySize can be either 'pvalue' or 'geneNum'. Nice thing, but should be polished
 # as it looks ugly now
-Cnetplot <- cnetplot(gse, categorySize="pvalue", foldChange=rankings, showCategory = 20, 
-         cex_label_gene=0, cex_label_category=0.5, cex_category=0.5,
-         cex_gene=0.5, layout = "kk")
-Cnetplot
-ggsave(file = file.path(plot_path,"WGCNA_GSEA_Turq_Module_Cnetplot.svg"), plot = Emapplot, width=10, height=8)
+
+GSEA_cnetplot <- cnetplot(gse, categorySize="pvalue", foldChange = rankings, 
+                               showCategory = 10, # 20
+                               cex_label_category = 0.8,# size for pathways
+                               cex_label_gene = 0.7, # size for genes
+                               shadowtext = "none"                               # cex_gene=0.5
+                               # cex_label_gene=0, cex_category=0.5,
+                               # cex_gene=0.5, layout = "kk"
+)
+GSEA_cnetplot
+ggsave(file = file.path(new_dir,"WGCNA_GSEA_Blue_Module_Cnetplot.svg"), plot = GSEA_cnetplot, width=12, height=8)
 
 # No clue what it shows or could it be useful. The distribution is quite simialr
 # A Ridgeplot can be used to visualize these enrichment scores across multiple gene sets 
@@ -518,12 +581,14 @@ ggsave(file = file.path(plot_path,"WGCNA_GSEA_Turq_Module_Cnetplot.svg"), plot =
 Ridgeplot <- ridgeplot(gse, core_enrichment = TRUE, label_format=40, orderBy = "NES",
           decreasing = TRUE, showCategory = 10) + labs(x = "enrichment distribution")
 Ridgeplot
-ggsave(file = file.path(plot_path,"WGCNA_GSEA_Turq_Module_Ridgeplot.svg"), plot = Ridgeplot, width=10, height=8)
+ggsave(file = file.path(new_dir,"WGCNA_GSEA_Blue_Module_Ridgeplot.svg"), plot = Ridgeplot, width = 12, height=8)
 
 # Use the `Gene Set` param for the index in the title, and as the value for geneSetId
 Gseaplot <- gseaplot(gse, by = "all", title = gse$Description[1], geneSetID = 1)
 Gseaplot
-ggsave(file = file.path(plot_path,"WGCNA_GSEA_Turq_Module_Gseaplot.svg"), plot = Gseaplot, width=10, height=8)
+Gseaplot <- gseaplot2(gse, by = "all", title = gse$Description[1], geneSetID = 1:2)
+Gseaplot
+ggsave(file = file.path(new_dir,"WGCNA_GSEA_Blue_Module_Gseaplot.svg"), plot = Gseaplot, width = 12, height=8)
 
 
 terms <- gse$Description[1:20]
@@ -531,15 +596,15 @@ terms_with_TNBC <- paste0(terms, " TNBC")
 # Nice graph, maybe will show what terms are interesting 
 Pmcplot <- pmcplot(terms_with_TNBC, 2010:2023, proportion=TRUE)
 Pmcplot
-ggsave(file = file.path(plot_path,"WGCNA_GSEA_Turq_Module_Pmcplot.svg"), plot = Pmcplot, width=10, height=8)
+ggsave(file = file.path(new_dir,"WGCNA_GSEA_Blue_Module_Pmcplot.svg"), plot = Pmcplot, width = 12, height=8)
 
 
 
 
 
 
-
-#### GSEA  with fgsea
+#
+###### GSEA  with fgsea
 library("fgsea")
 library(RColorBrewer) # for a colourful plot
 # Functions ===================================================
