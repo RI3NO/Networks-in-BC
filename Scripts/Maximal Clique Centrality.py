@@ -34,8 +34,7 @@ def normalize_centrality(clique_count):
 
 
 # Create the graph from the .sif file
-G = read_sif_file("../Files/SHIT network.sif")
-# G = read_sif_file("../Files/STRING results.sif")
+G = read_sif_file("../Files/STRING results.sif")
 
 # Finding all maximal cliques
 cliques = list(nx.find_cliques(G))
