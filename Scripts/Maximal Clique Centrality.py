@@ -40,8 +40,8 @@ G = read_sif_file("../Files/STRING results.sif")
 cliques = list(nx.find_cliques(G))
 largest_clique = max(cliques, key=len)
 
-print("All cliques:", cliques)
-print("Largest clique:", largest_clique)
+# print("All cliques:", cliques)
+# print("Largest clique:", largest_clique)
 
 
 # Calculate Maximal Clique Centrality
