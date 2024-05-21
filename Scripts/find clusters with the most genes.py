@@ -14,6 +14,6 @@ for filename in os.listdir(folder_path):
 sorted_files = sorted(file_gene_counts.items(), key=lambda x: x[1], reverse=True)
 
 # Get the top 10 files with the most genes
-top_10_files = sorted_files[:10]
+top_10_files = sorted_files[:3]
 
 print(top_10_files)
