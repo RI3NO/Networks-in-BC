@@ -20,7 +20,7 @@ getwd()
 
 setwd(file.path(getwd(),"Scripts"))
 
-source("Functions.R")
+source("Functions_My.R")
 getwd()
 file_path <-  file.path("C:/Users/RTIntelektFBT/Desktop/Roman_Project/Networks-in-BC/Networks-in-BC","Files")
 new_dir <- file.path(file_path,"WGCNA_results") # 
@@ -111,19 +111,32 @@ subset_dds <- dds_SRP042620
 deseq_result <- DESeq(subset_dds)
 #View(deseq_result)
 
+# flitering genes with adj p-val <= 0.05
+deseq_result
+rowData(deseq_result)
+cancer_sample <- rownames(colData(deseq_result)[colData(deseq_result)$condition == "cancer",])
+cancer_sample
+str(colData(deseq_result))
 # getting results of DeSeq
 res <- results(deseq_result)
-res
+res_DEGs <- na.omit(res)
+res_DEGs <- res_DEGs[res_DEGs$padj <= 0.05,]
+res_DEGs
 #head(assay(deseq_result))
 
 vsd <- varianceStabilizingTransformation(deseq_result)
 #head(assay(vsd))
 
-wpn_vsd <- getVarianceStabilizedData(deseq_result)
+# create new deseq results with samples only with cancer and DEGs from DEA with p.adj <= 0.0.5
+deseq_res_cancer_Degs <- deseq_result[rownames(res_DEGs),cancer_sample]
+deseq_res_cancer_Degs
+
+wpn_vsd <- getVarianceStabilizedData(deseq_res_cancer_Degs)
 #wpn_vsd
 
 rv_wpn <- rowVars(wpn_vsd)
 #rv_wpn
+
 summary(rv_wpn)
 
 library(genefilter)
@@ -132,6 +145,12 @@ q75_wpn <- quantile( rowVars(wpn_vsd), .75)  # <= original
 q75_wpn
 q95_wpn <- quantile( rowVars(wpn_vsd), .95)  # <= changed to 95 quantile to reduce dataset
 q95_wpn
+
+wpn_vsd
+sum(rv_wpn > q95_wpn)
+
+sum(q95_wpn > rv_wpn)
+
 expr_normalized <- wpn_vsd[ rv_wpn > q95_wpn, ]
 expr_normalized[1:5,1:10]
 
@@ -241,7 +260,7 @@ ggsave(file = file.path(new_dir,"plot_picking_power_plot.svg"), plot = plot_pick
 
 
 # picked_power is optional depending on plots 
-picked_power = 14
+picked_power = 10
 temp_cor <- cor       
 
 cor <- WGCNA::cor         # Force it to use WGCNA cor function (fix a namespace conflict issue)
